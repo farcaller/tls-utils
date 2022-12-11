@@ -10,15 +10,19 @@
       rec {
         packages = flake-utils.lib.flattenTree {
           show-remote-cert = pkgs.writeShellScriptBin "show-remote-cert" ''
-            set -e
-
-            if [ "$1" == "" ]; then
+            if [ "$1" == "" -o "$1" == "-h" -o "$1" == "--help" ]; then
               echo "Usage: show-remote-cert HOSTNAME [PORT]"
+              exit 2
             fi
             HOST="$1"
             PORT="''${2:-443}"
 
-            CERTS=$(echo | ${pkgs.openssl.bin}/bin/openssl s_client -showcerts -servername "$1" -connect "$HOST:$PORT" 2>/dev/null)
+            CERTS=$(echo | ${pkgs.openssl.bin}/bin/openssl s_client -showcerts -servername "$1" -connect "$HOST:$PORT")
+
+            if [ "$CERTS" == "" -o $? -ne 0 ]; then
+              echo "could not connect to the remote at $HOST:$PORT or fetch the ceritifcate"
+              exit 1
+            fi
 
             echo "$CERTS" | ${pkgs.openssl.bin}/bin/openssl x509 -inform pem -noout -text
           '';
